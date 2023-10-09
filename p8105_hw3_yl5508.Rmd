@@ -1,0 +1,141 @@
+---
+title: "p8105_hw3_yl5508"
+author: "Yifei LIU"
+date: 2023/10/07
+output: github_document
+---
+
+It's a proj for HW3 about VISUALIZATION AND EDA.
+
+```{r setup, echo = FALSE, message = FALSE}
+library(p8105.datasets)
+library(tidyverse)
+options(scipen = 999)
+options(digits = 1)
+```
+
+## Problem 1
+
+```{r load instacart}
+#Variables review
+data("instacart")
+head(instacart, 5)
+```
+
+First, we shall take a quick look at the dataset.  
+The `instacart` dataset contains `r nrow(instacart)` obs. and `r ncol(instacart)` variables.
+For some key variables, the delineation for such is shown as below:  
+- `order_id` is order identifier, `product_id` is product identifier, `user_id` is customer identifier. `product_name` is name of the product. `aisle_id` is aisle identifier. `aisle` is the name of the aisle. `department_id` is department identifier. `department` is the name of the department.   
+- `reordered`: 1 if this prodcut has been ordered by this user in the past, 0 otherwise.  
+- `order_number` is the order sequence number for this user (1=first, n=nth).  
+- `order_dow` indicates the day of the week on which the order was placed. `order_hour_of_day` indicates the hour of the day on which the order was placed.  
+
+```{r ins_clean and manipulate, message = FALSE}
+#(a)
+ins_clean =
+  instacart |>
+  janitor::clean_names()
+
+#1
+ais_num =
+  ins_clean |>
+  group_by(aisle_id, aisle) |>
+  summarise(count = n()) |>
+  arrange(desc(count))
+head(ais_num, 5)
+#the same as: 
+#2
+#ais_num =
+  #ins_clean |>
+  #group_by(aisle_id, aisle) |>
+  #count(aisle, name = "count") |>
+  #arrange(-count)
+```
+
+**(a)** `r ins_clean |> summarise(n_distinct(aisle_id)) |> pull()` (or using `r n_distinct(ins_clean |> pull(aisle))`) aisles are existed in data.  
+`r head(ais_num, 1) |> pull(aisle)` is aisle that most items ordered from. The amount of items for this aisle is `r max(ais_num |> pull(count))`.  
+
+```{r ins_ais_bargraph}
+#(b)
+ais_10k =
+  ais_num |>
+  filter(count > 10000) |>
+  mutate(color = ceiling(count / 10000)) |>
+  mutate(color = ifelse(color <5, as.character(color), "more"))
+
+ais_10k_vertical =
+  ais_10k |>
+  ggplot(aes(x = reorder(aisle, -count), y = count, fill = factor(color), color = factor(color))) +
+  #reorder ais_10k$aisle according to ais_10k$count. 
+  #Actually, it is a factors reorder function, we can use parameter "FUN" to calculate the value in one factor as the reorder criteria.
+  #'fill': color the inside, 'color': color the contour.
+  geom_bar(stat = "identity", alpha = .75) +
+  labs(
+    title = "Number of Items Ordered in Each Aisle",
+    x = "Aisle",
+    y = "Number of Item",
+  ) +
+  viridis::scale_fill_viridis(discrete = TRUE, option = "viridis") +
+  #connected with parameter 'fill'.
+  viridis::scale_color_viridis(discrete = TRUE, option = "viridis") +
+  #connected with parameter 'color'.
+  #or using parameter 'scale_fill_hue(h = c(100, 400)) +'.
+  theme_minimal() +
+  theme(plot.title = element_text(size = 15, face = "bold", hjust = 0.5), axis.text.x = element_text(angle = 90, hjust = 1), legend.position = "none")
+ais_10k_vertical
+
+ais_10k_horizontal =
+  ais_10k |>
+  ggplot(aes(x = reorder(aisle, count), y = count, fill = factor(color), color = factor(color))) +
+  geom_bar(stat = "identity", alpha = 0.75) +
+  labs(
+    title = "Number of Items Ordered in Each Aisle",
+    x = "Aisle",
+    y = "Number of Item",
+  ) +
+  viridis::scale_fill_viridis(discrete = TRUE, option = "viridis") +
+  viridis::scale_color_viridis(discrete = TRUE, option = "viridis") +
+  theme_minimal() +
+  theme(plot.title = element_text(size = 15, face = "bold", hjust = 0.5), legend.position = "none") +
+  coord_flip()
+ais_10k_horizontal
+```
+
+```{r ggsave, message = FALSE}
+ggsave("ais_10k_vertical.png", ais_10k_vertical)
+ggsave("ais_10k_horizontal.png", ais_10k_horizontal)
+```
+
+**(b)** Two bar graphs are painted in this part. The data extends in different directions.  
+For the generating process, we filtered the data so that they all lie in given range. Then we created factors for later coloring process. Use `ggplot` and `geom_bar` to build graph frameworks. After that, use function in `viridis` package to color the graphs.
+
+```{r ins_most pop, message = FALSE}
+#(c)
+pop_num =
+  ins_clean |>
+  filter(aisle %in% c("baking ingredients", "dog food care", "packaged vegetables fruits")) |>
+  group_by(aisle, product_name) |>
+  summarise(count = n()) |>
+  arrange(aisle, -count) |>
+  top_n(3, wt = count)
+pop_num
+```
+
+**(c)** We filtered the data so that they all lie in given range. Then we group the data by variables `aisle` and `product_name`. Use `summarise` to generate the count of specific items given to the selected groups. At last, `top_n` is used to pick the 3 products with the biggest count in selected aisles.
+
+```{r ins_ave h, message = FALSE}
+#(d)
+ave_h =
+  ins_clean |>
+  filter(product_name %in% c("Pink Lady Apples", "Coffee Ice Cream")) |>
+  group_by(product_name, order_dow) |>
+  summarise(ave_hour = mean(order_hour_of_day, na.rm = TRUE)) |>
+  pivot_wider(names_from = order_dow, values_from = ave_hour)
+ave_h
+```
+
+**(d)** We filtered the data so that they all lie in given range. Then we group the data by variables `product_name` and `order_dow`. Use `summarise` to generate the average hour of day given to the selected groups. At last, `pivot_width` is used to change the table shape, so it would meet the requirement mentioned in the problem.
+
+
+
+
