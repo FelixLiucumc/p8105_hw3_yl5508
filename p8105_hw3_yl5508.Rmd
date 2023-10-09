@@ -1,7 +1,7 @@
 ---
 title: "p8105_hw3_yl5508"
 author: "Yifei LIU"
-date: 2023/10/07
+date: 2023/10/09
 output: github_document
 ---
 
@@ -135,6 +135,117 @@ ave_h
 ```
 
 **(d)** We filtered the data so that they all lie in given range. Then we group the data by variables `product_name` and `order_dow`. Use `summarise` to generate the average hour of day given to the selected groups. At last, `pivot_width` is used to change the table shape, so it would meet the requirement mentioned in the problem.
+
+## Problem 2
+
+```{r load brfss}
+#Variables review
+data("brfss_smart2010")
+head(brfss_smart2010, 5)
+```
+
+First, we shall take a quick look at the dataset.  
+The `brfss` dataset contains `r nrow(brfss_smart2010)` obs. and `r ncol(brfss_smart2010)` variables. For some key variables, the delineation for such is shown as below:  
+- `year` is the time when data is recorded.  
+- `Locationabbr` is abbreviation of states.  
+- `Locationdesc` is abbreviation of detailed location.  
+- `Class` and `Topic` are the type of questions. `Response` is how subjects respond to the `Question`.  
+- Other variables are concerned with the statistic analysis result and info about the answers.  
+
+```{r get overallhealth}
+health_clean =
+  brfss_smart2010 |>
+  janitor::clean_names() |>
+  select(state = locationabbr, location = locationdesc, everything()) |>
+  filter(topic == "Overall Health") |>
+  filter(response %in% c("Excellent", "Very good", "Good", "Fair", "Poor")) |>
+  mutate(response = factor(response, levels = c("Poor", "Fair", "Good", "Very good", "Excellent"), ordered = TRUE)) |>
+  arrange(response, year, state, location)
+  #the same as: arrange(factor(response, levels = c("Poor", "Fair", "Good", "Very good", "Excellent"), ordered = TRUE), state, specific_location, year)
+head(health_clean, 5)
+```
+
+```{r health_manipulate1, message = FALSE}
+hea_02 =
+  health_clean |>
+  filter(year == "2002") |>
+  group_by(state) |>
+  summarise(count = n_distinct(location)) |>
+  filter(count >= 7)
+hea_02 |> pull(state)
+```
+
+```{r health_manipulate2, message = FALSE}
+hea_10 =
+  health_clean |>
+  filter(year == "2010") |>
+  group_by(state) |>
+  summarise(count = n_distinct(location)) |>
+  filter(count >= 7)
+hea_10 |> pull(state)
+```
+
+In **2002**, states which were observed at 7 or more location are shown as followed: `r hea_02 |> pull(state)`.  
+In **2010**, states which were observed at 7 or more location are shown as followed: `r hea_02 |> pull(state)`.
+
+```{r health_manipulate3, message = FALSE}
+exc_hea_data =
+  health_clean |>
+  filter(response == "Excellent") |>
+  group_by(year, state) |>
+  summarise(ave_dv = mean(data_value, na.rm = TRUE))
+
+exc_hea_data |>
+  ggplot(aes(x = year, y = ave_dv, group = state, color = state)) +
+  geom_line() +
+  labs(
+    title = "Average of Data_Value for Each State across Years",
+    x = "Year",
+    y = "Average_Datavalue",
+  ) +
+  theme_minimal() +
+  theme(plot.title = element_text(size = 15, face = "bold", hjust = 0.5), legend.position = "right")
+```
+
+We take `health_clean` dataset as original data, and group the data up by variables `year` and `state`. Then, use `summarise()` to get the average of `data_vale` across locations within a state. At last, a spaghetti plot is drawn from the dataset manipulated using methods as mentioned above.
+
+```{r health_manipulate4, message = FALSE, warning = FALSE}
+health_clean |>
+  filter(year == "2006" | year == "2010") |>
+  filter(state == "NY") |>
+  ggplot(aes(x = response, y = data_value)) +
+  geom_boxplot() +
+  labs(
+    title = "Distribution of Data_Value for Responses in NY",
+    x = "Response",
+    y = "Data_value",
+  ) +
+  theme(plot.title = element_text(size = 15, face = "bold", hjust = 0.5)) +
+  facet_grid(~year)
+```
+
+```{r health_manipulate#4, eval = FALSE, message = FALSE}
+#basically the same as:
+res_hea_06 =
+  health_clean |>
+  filter(year == "2006" & state == "NY") |>
+  ggplot(aes(x = response, y = data_value)) +
+  geom_boxplot() +
+  theme(legend.position = "none")
+
+res_hea_10 =
+  health_clean |>
+  filter(year == "2010" & state == "NY") |>
+  ggplot(aes(x = response, y = data_value)) +
+  geom_boxplot() +
+  theme(legend.position = "none")
+
+library(patchwork)
+res_hea_06 + res_hea_10
+```
+
+Picture a plot with two panels using data filtered by variables `year` and `state` from dataset `health_clean`. We pick boxplot to show the distribution of `data_value`.
+
 
 
 
