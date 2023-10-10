@@ -186,7 +186,7 @@ hea_10 |> pull(state)
 ```
 
 In **2002**, states which were observed at 7 or more location are shown as followed: `r hea_02 |> pull(state)`.  
-In **2010**, states which were observed at 7 or more location are shown as followed: `r hea_02 |> pull(state)`.
+In **2010**, states which were observed at 7 or more location are shown as followed: `r hea_10 |> pull(state)`.
 
 ```{r health_manipulate3, message = FALSE}
 exc_hea_data =
@@ -321,7 +321,7 @@ total_point =
 total_point
 ```
 
-```{r 24h_accelerometerdata_plot, message = FALSE}
+```{r 24h_accelerometerdata_plot, message = FALSE, fig.width = 12, fig.height = 6}
 acc_24h =
   cov_acc |>
   pivot_longer(min1:min1440, names_to = "time_split", values_to = "MIMS") |>
