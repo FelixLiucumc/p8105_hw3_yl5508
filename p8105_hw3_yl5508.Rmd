@@ -204,7 +204,8 @@ exc_hea_data |>
     y = "Average_Datavalue",
   ) +
   theme_minimal() +
-  theme(plot.title = element_text(size = 15, face = "bold", hjust = 0.5), legend.position = "right")
+  theme(legend.position = "right") +
+  theme(plot.title = element_text(size = 15, face = "bold", hjust = 0.5))
 ```
 
 We take `health_clean` dataset as original data, and group the data up by variables `year` and `state`. Then, use `summarise()` to get the average of `data_vale` across locations within a state. At last, a spaghetti plot is drawn from the dataset manipulated using methods as mentioned above.
@@ -213,15 +214,17 @@ We take `health_clean` dataset as original data, and group the data up by variab
 health_clean |>
   filter(year == "2006" | year == "2010") |>
   filter(state == "NY") |>
-  ggplot(aes(x = response, y = data_value)) +
-  geom_boxplot() +
+  ggplot(aes(x = response, y = data_value, fill = response)) +
+  geom_boxplot(alpha = 0.5) +
   labs(
     title = "Distribution of Data_Value for Responses in NY",
     x = "Response",
-    y = "Data_value",
+    y = "Data_value"
   ) +
-  theme(plot.title = element_text(size = 15, face = "bold", hjust = 0.5)) +
-  facet_grid(~year)
+  guides(fill = guide_legend("Response")) +
+  theme_minimal() +
+  facet_grid(~ year) +
+  theme(plot.title = element_text(size = 15, face = "bold", hjust = 0.5))
 ```
 
 ```{r health_manipulate#4, eval = FALSE, message = FALSE}
@@ -246,6 +249,77 @@ res_hea_06 + res_hea_10
 
 Picture a plot with two panels using data filtered by variables `year` and `state` from dataset `health_clean`. We pick boxplot to show the distribution of `data_value`.
 
+## Problem 3
+
+```{r acc and cov cleaning}
+acc_clean =
+  read_csv("./dataset/nhanes_accel.csv") |>
+  janitor::clean_names()
+
+cov_clean =
+  read_csv("./dataset/nhanes_covar.csv", skip = 4) |>
+  janitor::clean_names() |>
+  drop_na()
+
+cov_acc =
+  inner_join(cov_clean, acc_clean, by = "seqn") |>
+  filter(age >= 21) |>
+  mutate(sex = case_match(
+    sex, 
+    1 ~ "male", 
+    2 ~ "female"
+  ), education = case_match(
+    education, 
+    1 ~ "less than high school", 
+    2 ~ "high school equivalent", 
+    3 ~ "more than high school"
+  )) |>
+  mutate(sex = factor(sex, levels = c("male", "female")), education = factor(education, levels = c("less than high school", "high school equivalent", "more than high school", ordered = TRUE)))
+head(cov_acc, 5)
+```
+
+```{r edu_sex_cov, message = FALSE}
+edu_cov =
+  cov_acc |>
+  group_by(education, sex) |>
+  summarise(count = n()) |>
+  pivot_wider(names_from = sex, values_from = count)
+edu_cov
+
+age_dis =
+  cov_acc |>
+  ggplot(aes(x = sex, y = age, fill = sex)) +
+  geom_boxplot(alpha = 0.5) +
+  guides(fill = guide_legend("sex")) +
+  theme_minimal() +
+  facet_grid(~ education)
+age_dis
+```
+
+```{r}
+total_acc =
+  cov_acc %>%
+  mutate(total_act = rowSums(select(., min1:min1440))) |>
+  #'rowSums()': function used for cross-line computing. It needs a dataframe rather than names of selected variables.
+  #'. (placeholder)' need to be used with pipe '%>%'.
+  select(seqn, age, total_act, sex, education)
+
+total_point =
+  total_acc |>
+  ggplot(aes(x = age, y = total_act, color = sex)) +
+  geom_point(alpha = 0.5) +
+  geom_smooth(se = FALSE) +
+  labs(
+    title = "Total Activity against Age, by Sex and Education",
+    x = "Age",
+    y = "Total Activity"
+  ) +
+  viridis::scale_color_viridis(discrete = TRUE, option = "viridis") +
+  theme_minimal() +
+  facet_grid(~ education) +
+  theme(plot.title = element_text(size = 15, face = "bold", hjust = 0.5))
+total_point
+```
 
 
 
