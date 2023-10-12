@@ -7,7 +7,7 @@ output: github_document
 
 It's a proj for HW3 about VISUALIZATION AND EDA.
 
-```{r setup, echo = FALSE, message = FALSE}
+```{r setup, message = FALSE}
 library(p8105.datasets)
 library(tidyverse)
 options(scipen = 999)
@@ -278,14 +278,22 @@ cov_acc =
 head(cov_acc, 5)
 ```
 
-```{r edu_sex_cov, message = FALSE}
+After dropping NA from demographic dataset , we join the data together, then exclude those less than 21 years of age, create factors for variables `sex` and `education` (not numeric) and set order for `education`.   
+In summary, we get a merged dataset with `r nrow(cov_acc)` obs. and `r ncol(cov_acc)` variables.  
+
+```{r edu_sex_cov_1, message = FALSE}
 edu_cov =
   cov_acc |>
   group_by(education, sex) |>
   summarise(count = n()) |>
   pivot_wider(names_from = sex, values_from = count)
 edu_cov
+```
 
+First, we select 2 key elements from the dataset `cov_acc` using function `group_by()` and extract the counting number from the processed data. After that, we create a `r nrow(edu_cov)`X`r ncol(edu_cov)` table using function `pivot_wider()` to compress the original table.  
+We observe that men and women with education level `more than high school` occupy the greatest proportion in the participants population, the counting number of which can be added up to half of the total number. There's no huge gap between sexes at the education level `less than high school` and `more than high school`. But for `high school equivalent`, more men are observed than women.  
+
+```{r edu_sex_cov_2, message = FALSE}
 age_dis =
   cov_acc |>
   ggplot(aes(x = sex, y = age, fill = sex)) +
@@ -295,6 +303,9 @@ age_dis =
   facet_grid(~ education)
 age_dis
 ```
+
+Using boxplot, we show the visulization result of age distribution for men and women. Parameter `facet_grid(~ education)` is used for dividing the plot for different education category.  
+From the plot, we can see there is no significant age difference between men and women in education levels of `less than high school` and `more than high school`. However, age difference between two sexes is observed in education level `high school equivalent` and the distribution of men's age is generally smaller than that of women's.  
 
 ```{r total_activity_plot, message = FALSE}
 total_acc =
@@ -321,6 +332,9 @@ total_point =
 total_point
 ```
 
+The variable `total_act` indicates the total activity over the day, which is calculated using function `rowSums()` and data columns from `min1` to `min1440`. Then we can make the point plot and set a trend curve in it.  
+From the plot, general trend in all education levels is decreasing, which indicates that typically people's activity get milder while their age increases. Worth noticing, there's one peak in this decreasing trend, which lies in interval about 50-60 for `less than high school`, 30-40 for `high school equivalent`, and 40-60 for `more than high school`. People's total activity level rises for about 5-10 years and then decreases. For education level `less than high school`, total activity level of men is higher than that of women, and the reverse is true for education level `high school equivalent` and `more than high school`. The total activity level of those in education level `less than high school` is slightly higher than that of people in other two education levels. But the total activity levels tend to be the same at older age.  
+
 ```{r 24h_accelerometerdata_plot, message = FALSE, fig.width = 12, fig.height = 6}
 acc_24h =
   cov_acc |>
@@ -345,5 +359,6 @@ acc24h_point =
 acc24h_point
 ```
 
-
+Reorganize the dataset by using function `pivot_longer()`. Set variable `time_split`(specific minute point from 24 hours) as X-axis variable, `MIMS`(activity index at specific time point) as y-axis variable. Then show different sexes in  different colors and divide the plot into 3 parts connected with different education levels.  
+The trend curves(smooth lines) are basically the same for men and women. The trend of curves indicates that for period during daytime, the activity level stays in high value, and for period during nighttime, it decays to a lower level. For different education level, trend curves show a similar pattern, means that there is no significant connection between activity level and education level. But we can also notice that there're more points with extreme value in `more than high school` during noon and nightfall compared with other education levels.  
 
